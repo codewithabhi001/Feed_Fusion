@@ -96,11 +96,33 @@ class FeedController extends GetxController {
     scrollController = ScrollController()..addListener(_onScroll);
     searchTextController = TextEditingController();
 
-    // Register for connectivity restoration — silent refresh
-    _networkInfo.onConnectivityRestored = _onConnectivityRestored;
+    // ── Real-time Connectivity Listeners ──
+    // Immediately respond to network changes
+    ever(_networkInfo.isConnected, _handleConnectivityChange);
 
     // Initial load
     loadFeed();
+  }
+
+  void _handleConnectivityChange(bool isConnected) {
+    if (isConnected) {
+      _onConnectivityRestored();
+    } else {
+      AppLogger.log('📡 Offline detected — showing cached state');
+      showCachedBanner.value = true;
+
+      Get.snackbar(
+        'Offline',
+        'You are currently offline. Showing cached data.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange.shade800,
+        colorText: Colors.white,
+        icon: const Icon(Icons.wifi_off_rounded, color: Colors.white),
+        margin: const EdgeInsets.all(16),
+        borderRadius: 12,
+        duration: const Duration(seconds: 3),
+      );
+    }
   }
 
   @override
@@ -273,9 +295,35 @@ class FeedController extends GetxController {
 
   /// Called automatically when connectivity is restored
   void _onConnectivityRestored() {
-    AppLogger.log('🌐 Connectivity restored — starting silent refresh');
+    AppLogger.log('🌐 Connectivity restored — back to online');
     showCachedBanner.value = false;
 
+    // Show instant success feedback
+    Get.snackbar(
+      'Online',
+      'Connectivity restored! Refreshing feed...',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.green.shade800,
+      colorText: Colors.white,
+      icon: const Icon(Icons.wifi_rounded, color: Colors.white),
+      margin: const EdgeInsets.all(16),
+      borderRadius: 12,
+      duration: const Duration(seconds: 2),
+    );
+
+    // If we are currently showing an error or cached data, refresh it
+    if (feedState.value is FeedError ||
+        feedState.value is FeedCached ||
+        feedState.value is FeedInitial) {
+      if (isSearchMode.value) {
+        _performSearch(searchQuery.value);
+      } else {
+        loadFeed();
+      }
+      return;
+    }
+
+    // Silent refresh logic for normal loaded state
     if (isSearchMode.value) {
       _performSearch(searchQuery.value).catchError((e) {
         AppLogger.logError('Silent search refresh failed', e);

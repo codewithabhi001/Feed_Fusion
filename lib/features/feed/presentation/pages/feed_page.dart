@@ -134,6 +134,8 @@ class FeedPage extends GetView<FeedController> {
       color: AppTheme.primary,
       child: ListView.builder(
         controller: controller.scrollController,
+        // Pre-render items outside the viewport for ultra-smooth fast scrolling
+        cacheExtent: 1500,
         physics: const AlwaysScrollableScrollPhysics(
           parent: BouncingScrollPhysics(),
         ),

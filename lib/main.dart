@@ -44,6 +44,8 @@ class FeedFusionApp extends StatelessWidget {
       title: AppText.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      // ── Smooth Scrolling Physics ──
+      scrollBehavior: const CustomScrollBehavior(),
 
       // ── Routes ──
       initialRoute: '/splash',
@@ -57,5 +59,15 @@ class FeedFusionApp extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+/// Custom Scroll Behavior for ultra-smooth physics across platforms.
+class CustomScrollBehavior extends MaterialScrollBehavior {
+  const CustomScrollBehavior();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    return const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
   }
 }

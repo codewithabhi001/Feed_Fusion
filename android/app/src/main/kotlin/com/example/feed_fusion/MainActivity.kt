@@ -1,20 +1,36 @@
 package com.example.feed_fusion
 
-import io.flutter.embedding.android.FlutterActivity
-import io.flutter.embedding.engine.FlutterEngine
 import android.os.Build
+import android.view.Display
 import android.view.WindowManager
+import io.flutter.embedding.android.FlutterActivity
 
-class MainActivity: FlutterActivity() {
-    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-        super.configureFlutterEngine(flutterEngine)
-        
-        // Enable High Refresh Rate (120Hz) on supported Android devices
+class MainActivity : FlutterActivity() {
+    override fun onResume() {
+        super.onResume()
+        enableHighRefreshRate()
+    }
+
+    private fun enableHighRefreshRate() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.attributes.preferredDisplayModeId = 0
-        } else {
-            // Deprecated way for older Android versions
-            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+            val display = display
+            if (display != null) {
+                val supportedModes = display.supportedModes
+                // Find mode with highest refresh rate
+                val maxRefreshRateMode = supportedModes.maxByOrNull { it.refreshRate }
+                if (maxRefreshRateMode != null) {
+                    window.attributes.preferredDisplayModeId = maxRefreshRateMode.modeId
+                }
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // For Android 6.0 to 10
+            val modes = window.windowManager.defaultDisplay.supportedModes
+            val maxMode = modes.maxByOrNull { it.refreshRate }
+            if (maxMode != null) {
+                val params = window.attributes
+                params.preferredDisplayModeId = maxMode.modeId
+                window.attributes = params
+            }
         }
     }
 }
