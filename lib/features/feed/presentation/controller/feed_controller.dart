@@ -100,6 +100,13 @@ class FeedController extends GetxController {
     // Immediately respond to network changes
     ever(_networkInfo.isConnected, _handleConnectivityChange);
 
+    // Sync initial state manually (ever only triggers on change)
+    if (_networkInfo.isConnected.value) {
+      showCachedBanner.value = false;
+    } else {
+      showCachedBanner.value = true;
+    }
+
     // Initial load
     loadFeed();
   }
@@ -150,7 +157,12 @@ class FeedController extends GetxController {
     try {
       final items = await _fetchInitialFeed();
       feedState.value = FeedLoaded(items);
-      showCachedBanner.value = false;
+
+      // If we got fresh data, we are definitely online
+      if (_networkInfo.isConnected.value) {
+        showCachedBanner.value = false;
+      }
+
       AppLogger.log('✅ Feed loaded: ${items.length} items');
     } on DioException catch (e) {
       if (e.type == DioExceptionType.cancel) return;
@@ -264,6 +276,11 @@ class FeedController extends GetxController {
     try {
       final items = await _searchFeed(query);
       feedState.value = FeedLoaded(items);
+
+      // If search succeeded while connected, hide the banner
+      if (_networkInfo.isConnected.value) {
+        showCachedBanner.value = false;
+      }
     } on DioException catch (e) {
       if (e.type == DioExceptionType.cancel) return;
       _handleError('Search failed');

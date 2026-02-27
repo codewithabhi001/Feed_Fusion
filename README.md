@@ -11,6 +11,7 @@ A production-grade Flutter application implementing a resilient, unified feed sy
 - **Debounced Search**: Throttled search with cancellation tokens across both sources.
 - **Offline Mode**: Two-layer caching (In-memory LRU + Persistent Disk) for seamless offline use.
 - **Smart Refresh**: Pull-to-refresh that cancels previous in-flight requests to prevent memory leaks.
+- **Automated CI/CD**: Integrated GitHub Actions for automated APK building and deployment.
 
 ---
 
