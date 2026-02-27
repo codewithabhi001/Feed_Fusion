@@ -238,24 +238,32 @@ class FeedRepositoryImpl implements FeedRepository {
 
     final cancelToken = _dioClient.getCancelToken('search');
 
-    // Parallel search across both APIs with a reasonable timeout
-    // DummyJSON can sometimes be slow; we don't want to hang the UI for 20s.
-    final results = await Future.wait([
-      _searchProductsSafe(query: query, cancelToken: cancelToken).timeout(
-        const Duration(seconds: 6),
-        onTimeout: () {
-          AppLogger.logError('Product search timed out for: "$query"');
-          return null; // Gracefully continue with posts only
-        },
-      ),
-      _searchPostsSafe(query: query, cancelToken: cancelToken).timeout(
-        const Duration(seconds: 6),
-        onTimeout: () {
-          AppLogger.logError('Post search timed out for: "$query"');
-          return null; // Gracefully continue with products only
-        },
-      ),
-    ]);
+    // Parallel search across both APIs with an active timeout handler.
+    // If an API hangs (DummyJSON can be slow), we cancel the token so
+    // it doesn't log late errors or waste resources.
+    final results =
+        await Future.wait([
+          _searchProductsSafe(query: query, cancelToken: cancelToken).timeout(
+            const Duration(seconds: 8),
+            onTimeout: () {
+              AppLogger.log('⏳ Product search exceeded 8s limit — continuing');
+              return null;
+            },
+          ),
+          _searchPostsSafe(query: query, cancelToken: cancelToken).timeout(
+            const Duration(seconds: 8),
+            onTimeout: () {
+              AppLogger.log('⏳ Post search exceeded 8s limit — continuing');
+              return null;
+            },
+          ),
+        ]).then((values) {
+          // If either timed out, we cancel the token to stop the background hanging call
+          if (values.contains(null)) {
+            cancelToken.cancel("Search time limit exceeded");
+          }
+          return values;
+        });
 
     final products = results[0] as List<ProductModel>?;
     final posts = results[1] as List<PostModel>?;
@@ -461,7 +469,11 @@ class FeedRepositoryImpl implements FeedRepository {
       );
       return response.products;
     } on DioException catch (e) {
-      if (e.type == DioExceptionType.cancel) rethrow;
+      // Quietly return null for cancellations or timeouts handled by caller
+      if (e.type == DioExceptionType.cancel ||
+          e.type == DioExceptionType.connectionTimeout) {
+        return null;
+      }
       AppLogger.logError('Product search failed: "$query"', e);
       return null;
     }
@@ -478,7 +490,11 @@ class FeedRepositoryImpl implements FeedRepository {
       );
       return response.posts;
     } on DioException catch (e) {
-      if (e.type == DioExceptionType.cancel) rethrow;
+      // Quietly return null for cancellations or timeouts handled by caller
+      if (e.type == DioExceptionType.cancel ||
+          e.type == DioExceptionType.connectionTimeout) {
+        return null;
+      }
       AppLogger.logError('Post search failed: "$query"', e);
       return null;
     }

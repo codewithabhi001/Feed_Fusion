@@ -19,9 +19,9 @@ class ApiConstants {
   static const int searchResultLimit = 10;
 
   // ── Timeouts (in seconds) ──
-  static const int connectTimeout = 30;
-  static const int receiveTimeout = 30;
-  static const int sendTimeout = 30;
+  static const int connectTimeout = 10;
+  static const int receiveTimeout = 10;
+  static const int sendTimeout = 10;
 
   // ── Cache Configuration ──
   static const int cacheExpiryMinutes = 5;
