@@ -238,17 +238,30 @@ class FeedRepositoryImpl implements FeedRepository {
 
     final cancelToken = _dioClient.getCancelToken('search');
 
-    // Parallel search across both APIs
+    // Parallel search across both APIs with a reasonable timeout
+    // DummyJSON can sometimes be slow; we don't want to hang the UI for 20s.
     final results = await Future.wait([
-      _searchProductsSafe(query: query, cancelToken: cancelToken),
-      _searchPostsSafe(query: query, cancelToken: cancelToken),
+      _searchProductsSafe(query: query, cancelToken: cancelToken).timeout(
+        const Duration(seconds: 6),
+        onTimeout: () {
+          AppLogger.logError('Product search timed out for: "$query"');
+          return null; // Gracefully continue with posts only
+        },
+      ),
+      _searchPostsSafe(query: query, cancelToken: cancelToken).timeout(
+        const Duration(seconds: 6),
+        onTimeout: () {
+          AppLogger.logError('Post search timed out for: "$query"');
+          return null; // Gracefully continue with products only
+        },
+      ),
     ]);
 
     final products = results[0] as List<ProductModel>?;
     final posts = results[1] as List<PostModel>?;
 
     if (products == null && posts == null) {
-      throw Exception('Failed to search data. Please check your connection.');
+      throw Exception('Search request timed out or failed. Please try again.');
     }
 
     final merged = _mergeAlternately(products ?? [], posts ?? []);

@@ -36,6 +36,7 @@ class DioClient {
           options.extra['requestStartTime'] =
               DateTime.now().millisecondsSinceEpoch;
           handler.next(options);
+          
         },
         onResponse: (response, handler) {
           final startTime =
